@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datafed-foxx
+  namespace: datafed
+  labels:
+    app: datafed-foxx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datafed-foxx
+  template:
+    metadata:
+      labels:
+        app: datafed-foxx
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: datafed-foxx
+        image: datafed-foxx:latest
+        command: ["/bin/bash", "-c"]
+        args: ["/datafed/source/docker/entrypoint_foxx.sh && sleep infinity"]
+        env:
+        - name: DATAFED_ZEROMQ_SYSTEM_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_ZEROMQ_SYSTEM_SECRET
+        - name: DATAFED_DOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DOMAIN
+        - name: DATAFED_DEFAULT_LOG_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DEFAULT_LOG_PATH
+        - name: DATAFED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_DATABASE_PASSWORD
+        - name: DATAFED_DATABASE_IP_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DATABASE_IP_ADDRESS
+        - name: DATAFED_DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DATABASE_HOST
+        - name: ENABLE_FOXX_TESTS
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_ENABLE_FOXX_TESTS
+        volumeMounts:
+        - name: foxx-tmp
+          mountPath: /tmp
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "[ -f /tmp/.foxx_is_installed ]"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 20
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "[ -f /tmp/.foxx_is_installed ]"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+      volumes:
+      - name: foxx-tmp
+        persistentVolumeClaim:
+          claimName: foxx-tmp-pvc
+      initContainers:
+      - name: wait-for-arango
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z arango 8529; do echo waiting for arango; sleep 2; done;']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datafed-foxx
+  namespace: datafed
+spec:
+  selector:
+    app: datafed-foxx
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP

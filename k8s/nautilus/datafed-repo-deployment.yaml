@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datafed-repo
+  namespace: datafed
+  labels:
+    app: datafed-repo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datafed-repo
+  template:
+    metadata:
+      labels:
+        app: datafed-repo
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+      - name: datafed-repo
+        image: datafed-repo:latest
+        ports:
+        - containerPort: 9000
+        env:
+        - name: DATAFED_ZEROMQ_SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_ZEROMQ_SESSION_SECRET
+        - name: DATAFED_ZEROMQ_SYSTEM_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_ZEROMQ_SYSTEM_SECRET
+        - name: DATAFED_DOMAIN
+          value: "datafed-core"
+        - name: DATAFED_SERVER_PORT
+          value: "7513"
+        - name: DATAFED_HTTPS_SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_HTTPS_SERVER_PORT
+        - name: DATAFED_DEFAULT_LOG_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DEFAULT_LOG_PATH
+        - name: DATAFED_CORE_ADDRESS_PORT_INTERNAL
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_CORE_ADDRESS_PORT_INTERNAL
+        - name: DATAFED_GCS_COLLECTION_ROOT_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_GCS_COLLECTION_ROOT_PATH
+        - name: DATAFED_GCS_COLLECTION_BASE_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_GCS_COLLECTION_BASE_PATH
+        - name: DATAFED_REPO_ID_AND_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_REPO_ID_AND_DIR
+        - name: UID
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_UID
+        - name: HOST_HOSTNAME
+          value: "localhost"
+        volumeMounts:
+        - name: datafed-keys
+          mountPath: /opt/datafed/keys
+        - name: datafed-logs
+          mountPath: /opt/datafed/logs
+        - name: datafed-repo-data
+          mountPath: /mnt/datafed
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 2Gi
+          limits:
+            cpu: 4000m
+            memory: 8Gi
+        readinessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          failureThreshold: 10
+        livenessProbe:
+          tcpSocket:
+            port: 9000
+          initialDelaySeconds: 180
+          periodSeconds: 60
+          failureThreshold: 10
+      volumes:
+      - name: datafed-keys
+        persistentVolumeClaim:
+          claimName: datafed-keys-pvc
+      - name: datafed-logs
+        persistentVolumeClaim:
+          claimName: datafed-logs-pvc
+      - name: datafed-repo-data
+        persistentVolumeClaim:
+          claimName: datafed-repo-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datafed-repo
+  namespace: datafed
+spec:
+  selector:
+    app: datafed-repo
+  ports:
+  - name: repo
+    port: 9000
+    targetPort: 9000
+  type: ClusterIP

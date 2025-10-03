@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: drexeldise
+
+resources:
+  - configmap.yaml
+  - secret.yaml
+  - ssl-certs-secret.yaml
+  - persistent-volumes.yaml
+  - ssl-cert-init-job.yaml
+  - arango-deployment.yaml
+  - datafed-foxx-deployment.yaml
+  - datafed-core-deployment.yaml
+  - datafed-web-deployment.yaml
+  - datafed-repo-deployment.yaml
+  - ingress.yaml
+  - network-policy.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: datafed
+  app.kubernetes.io/instance: datafed-nautilus
+  app.kubernetes.io/version: "latest"
+  app.kubernetes.io/component: data-management
+  app.kubernetes.io/part-of: datafed
+  app.kubernetes.io/managed-by: kustomize
+
+# Image transformations - update these with your registry
+images:
+  - name: datafed-web
+    newName: chirayupatel911/datafed-web
+    newTag: latest
+  - name: datafed-core
+    newName: chirayupatel911/datafed-core
+    newTag: latest
+  - name: datafed-foxx
+    newName: chirayupatel911/datafed-foxx
+    newTag: latest
+  - name: datafed-repo
+    newName: chirayupatel911/datafed-repo
+    newTag: latest

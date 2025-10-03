@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: datafed-ssl-init
+  namespace: datafed
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: copy-certs
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          cp /tmp/certs/datafed-web-cert.pem /opt/datafed/keys/datafed-web-cert.pem
+          cp /tmp/certs/datafed-web-key.pem /opt/datafed/keys/datafed-web-key.pem
+          chmod 644 /opt/datafed/keys/datafed-web-cert.pem
+          chmod 600 /opt/datafed/keys/datafed-web-key.pem
+          chown -R 1000:0 /opt/datafed/keys /opt/datafed/logs
+          chmod 775 /opt/datafed/keys /opt/datafed/logs
+          echo "SSL certificates copied and permissions set successfully"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        volumeMounts:
+        - name: ssl-certs
+          mountPath: /tmp/certs
+          readOnly: true
+        - name: datafed-keys
+          mountPath: /opt/datafed/keys
+        - name: datafed-logs
+          mountPath: /opt/datafed/logs
+      volumes:
+      - name: ssl-certs
+        secret:
+          secretName: datafed-ssl-certs
+      - name: datafed-keys
+        persistentVolumeClaim:
+          claimName: datafed-keys-pvc
+      - name: datafed-logs
+        persistentVolumeClaim:
+          claimName: datafed-logs-pvc

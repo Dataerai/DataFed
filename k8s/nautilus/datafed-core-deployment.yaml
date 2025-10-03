@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datafed-core
+  namespace: datafed
+  labels:
+    app: datafed-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datafed-core
+  template:
+    metadata:
+      labels:
+        app: datafed-core
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: datafed-core
+        image: datafed-core:latest
+        ports:
+        - containerPort: 7513
+        - containerPort: 7512
+        env:
+        - name: DATAFED_GLOBUS_APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_GLOBUS_APP_SECRET
+        - name: DATAFED_GLOBUS_APP_ID
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_GLOBUS_APP_ID
+        - name: DATAFED_ZEROMQ_SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_ZEROMQ_SESSION_SECRET
+        - name: DATAFED_ZEROMQ_SYSTEM_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_ZEROMQ_SYSTEM_SECRET
+        - name: DATAFED_DOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DOMAIN
+        - name: DATAFED_WEB_CERT_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_WEB_CERT_PATH
+        - name: DATAFED_WEB_KEY_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_WEB_KEY_PATH
+        - name: DATAFED_DEFAULT_LOG_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DEFAULT_LOG_PATH
+        - name: DATAFED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_DATABASE_PASSWORD
+        - name: DATAFED_DATABASE_IP_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DATABASE_IP_ADDRESS
+        - name: DATAFED_DATABASE_IP_ADDRESS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DATABASE_IP_ADDRESS_PORT
+        - name: DATAFED_CORE_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_CORE_LOG_LEVEL
+        volumeMounts:
+        - name: datafed-keys
+          mountPath: /opt/datafed/keys
+        - name: datafed-logs
+          mountPath: /opt/datafed/logs
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 2Gi
+          limits:
+            cpu: 4000m
+            memory: 8Gi
+        readinessProbe:
+          tcpSocket:
+            port: 7513
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 7513
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: datafed-keys
+        persistentVolumeClaim:
+          claimName: datafed-keys-pvc
+      - name: datafed-logs
+        persistentVolumeClaim:
+          claimName: datafed-logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datafed-core
+  namespace: datafed
+spec:
+  selector:
+    app: datafed-core
+  ports:
+  - name: internal
+    port: 7513
+    targetPort: 7513
+  - name: external
+    port: 7512
+    targetPort: 7512
+  type: ClusterIP

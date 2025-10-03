@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: datafed-network-policy
+  namespace: datafed
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: nginx-ingress
+    - podSelector:
+        matchLabels:
+          app: datafed-web
+    - podSelector:
+        matchLabels:
+          app: datafed-core
+    - podSelector:
+        matchLabels:
+          app: datafed-foxx
+    - podSelector:
+        matchLabels:
+          app: arango
+  egress:
+  - {}  # Allow all outbound traffic
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: arango-network-policy
+  namespace: datafed
+spec:
+  podSelector:
+    matchLabels:
+      app: arango
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: datafed-core
+    - podSelector:
+        matchLabels:
+          app: datafed-foxx
+    - namespaceSelector:
+        matchLabels:
+          name: nginx-ingress
+    ports:
+    - protocol: TCP
+      port: 8529

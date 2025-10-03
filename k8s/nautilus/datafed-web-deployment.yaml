@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datafed-web
+  namespace: datafed
+  labels:
+    app: datafed-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datafed-web
+  template:
+    metadata:
+      labels:
+        app: datafed-web
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
+      containers:
+      - name: datafed-web
+        image: datafed-web:latest
+        ports:
+        - containerPort: 8443
+        env:
+        - name: DATAFED_GLOBUS_APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_GLOBUS_APP_SECRET
+        - name: DATAFED_GLOBUS_APP_ID
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_GLOBUS_APP_ID
+        - name: DATAFED_ZEROMQ_SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_ZEROMQ_SESSION_SECRET
+        - name: DATAFED_ZEROMQ_SYSTEM_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_ZEROMQ_SYSTEM_SECRET
+        - name: DATAFED_DOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DOMAIN
+        - name: DATAFED_HTTPS_SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_HTTPS_SERVER_PORT
+        - name: DATAFED_WEB_CERT_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_WEB_CERT_PATH
+        - name: DATAFED_WEB_KEY_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_WEB_KEY_PATH
+        - name: DATAFED_WEB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_WEB_USER
+        - name: DATAFED_DEFAULT_LOG_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_DEFAULT_LOG_PATH
+        - name: DATAFED_CORE_ADDRESS_PORT_INTERNAL
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_CORE_ADDRESS_PORT_INTERNAL
+        - name: UID
+          valueFrom:
+            configMapKeyRef:
+              name: datafed-config
+              key: DATAFED_UID
+        volumeMounts:
+        - name: datafed-keys
+          mountPath: /opt/datafed/keys
+        - name: datafed-logs
+          mountPath: /opt/datafed/logs
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: datafed-keys
+        persistentVolumeClaim:
+          claimName: datafed-keys-pvc
+      - name: datafed-logs
+        persistentVolumeClaim:
+          claimName: datafed-logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datafed-web
+  namespace: datafed
+  annotations:
+    haproxy.org/check: "enabled"
+    haproxy.org/check-http: "/"
+spec:
+  selector:
+    app: datafed-web
+  ports:
+  - port: 443
+    targetPort: 8443
+    name: https
+  type: ClusterIP

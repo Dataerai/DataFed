@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datafed-config
+  namespace: datafed
+data:
+  DATAFED_DOMAIN: "dataerari.nrp-nautilus.io"
+  DATAFED_HTTPS_SERVER_PORT: "8443"
+  DATAFED_WEB_USER: "datafed"
+  DATAFED_DEFAULT_LOG_PATH: "/opt/datafed/logs"
+  DATAFED_CORE_ADDRESS_PORT_INTERNAL: "datafed-core:7513"
+  DATAFED_DATABASE_IP_ADDRESS: "arango"
+  DATAFED_DATABASE_IP_ADDRESS_PORT: "arango:8529"
+  DATAFED_DATABASE_HOST: "arango"
+  DATAFED_CORE_LOG_LEVEL: "3"
+  DATAFED_UID: "1000"
+  DATAFED_CONTAINER_LOG_PATH: "/opt/datafed/logs"
+  DATAFED_DATABASE_PORT: "8529"
+  DATAFED_WEB_CERT_PATH: "/opt/datafed/keys/datafed-web-cert.pem"
+  DATAFED_WEB_KEY_PATH: "/opt/datafed/keys/datafed-web-key.pem"
+  DATAFED_ENABLE_FOXX_TESTS: "false"
+  DATAFED_GCS_COLLECTION_ROOT_PATH: "/mnt/datafed"
+  DATAFED_GCS_COLLECTION_BASE_PATH: "/"
+  DATAFED_REPO_ID_AND_DIR: "datafed-repo"

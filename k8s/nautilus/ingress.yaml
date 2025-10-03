@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: datafed-ingress
+  namespace: datafed
+  annotations:
+    haproxy.org/server-ssl: "true"
+    haproxy.org/server-ssl-verify: "false"
+spec:
+  ingressClassName: haproxy
+  rules:
+  - host: dataerari.nrp-nautilus.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: datafed-web
+            port:
+              number: 443
+  tls:
+  - hosts:
+    - dataerari.nrp-nautilus.io
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: datafed-arango-ingress
+  namespace: datafed
+spec:
+  ingressClassName: haproxy
+  rules:
+  - host: arango-dataerari.nrp-nautilus.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: arango
+            port:
+              number: 8529
+  tls:
+  - hosts:
+    - arango-dataerari.nrp-nautilus.io

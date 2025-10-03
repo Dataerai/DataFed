@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arango
+  namespace: datafed
+  labels:
+    app: arango
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: arango
+  template:
+    metadata:
+      labels:
+        app: arango
+    spec:
+      containers:
+      - name: arango
+        image: arangodb/arangodb:3.12.4
+        ports:
+        - containerPort: 8529
+        env:
+        - name: ARANGO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: datafed-secrets
+              key: DATAFED_DATABASE_PASSWORD
+        volumeMounts:
+        - name: arango-storage
+          mountPath: /var/lib/arangodb3
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 2Gi
+          limits:
+            cpu: 4000m
+            memory: 8Gi
+        readinessProbe:
+          httpGet:
+            path: /_admin/server/availability
+            port: 8529
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /_admin/server/availability
+            port: 8529
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: arango-storage
+        persistentVolumeClaim:
+          claimName: arango-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arango
+  namespace: datafed
+spec:
+  selector:
+    app: arango
+  ports:
+  - port: 8529
+    targetPort: 8529
+  type: ClusterIP
